@@ -98,6 +98,13 @@ type bucketRequest struct {
 	ID string `json:"bucketId"`
 }
 
+type startLargeFileRequest struct {
+	ID          string            `json:"bucketId"`
+	Filename    string            `json:"fileName"`
+	ContentType string            `json:"contentType"`
+	FileInfo    map[string]string `json:"fileInfo"`
+}
+
 type createBucketRequest struct {
 	AccountID      string            `json:"accountId"`
 	BucketName     string            `json:"bucketName"`
@@ -121,8 +128,31 @@ type updateBucketRequest struct {
 	IfRevisionIs   int               `json:"ifRevisionIs,omitempty"`   // When set, the update will only happen if the revision number stored in the B2 service matches the one passed in
 }
 
+type getStartLargeFileResponse struct {
+	AccountID       string         `json:"accountId"`
+	Action          string         `json:"action"`
+	BucketID        string         `json:"bucketId"`
+	ContentLength   int            `json:"contentLength"`
+	ContentSha1     string         `json:"contentSha1"`
+	ContentType     string         `json:"contentType"`
+	FileId          string         `json:"fileId"`
+	FileInfo        map[string]int `json:"fileInfo"`
+	FileName        string         `json:"fileName"`
+	UploadTimestamp int64          `json:"uploadTimestamp"`
+}
+
+type getStartLargeFileRequest struct {
+	FileId string `json:"fileId"`
+}
+
 type getUploadURLResponse struct {
 	BucketID           string `json:"bucketId"`
+	UploadURL          string `json:"uploadUrl"`
+	AuthorizationToken string `json:"authorizationToken"`
+}
+
+type getPartUploadURLResponse struct {
+	FileID             string `json:"fileId"`
 	UploadURL          string `json:"uploadUrl"`
 	AuthorizationToken string `json:"authorizationToken"`
 }
