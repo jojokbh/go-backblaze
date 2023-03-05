@@ -26,6 +26,9 @@ Create a bucket
 bucket, _ := b2.CreateBucket("test_bucket", backblaze.AllPrivate)
 ~~~
 
+
+
+
 Uploading a file
 ~~~
 reader, _ := os.Open(path)
