@@ -251,7 +251,7 @@ func (b *Bucket) GetPartUploadURL(filename, contentType string) (*UploadAuth, st
 		}
 
 		firstresponse := &getStartLargeFileResponse{}
-		if err := b.b2.apiRequestV2("start_large_file", firstrequest, firstresponse); err != nil {
+		if err := b.b2.apiRequestV2("b2_start_large_file", firstrequest, firstresponse); err != nil {
 			return nil, "", err
 		}
 
