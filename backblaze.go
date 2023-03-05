@@ -14,7 +14,8 @@ import (
 
 const (
 	b2Host = "https://api.backblazeb2.com"
-	v1     = "/b2api/v2/"
+	v1     = "/b2api/v1/"
+	v2     = "/b2api/v2/"
 )
 
 // Credentials are the identification required by the Backblaze B2 API
@@ -202,6 +203,36 @@ func (c *B2) authRequest(method, apiPath string, body io.Reader) (*http.Request,
 	return req, c.auth, nil
 }
 
+// Create an authorized request using the client's credentials
+func (c *B2) authRequestV2(method, apiPath string, body io.Reader) (*http.Request, *authorizationState, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if !c.auth.isValid() {
+		if c.Debug {
+			log.Println("No valid authorization token, re-authorizing client")
+		}
+		if err := c.internalAuthorizeAccount(); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	path := c.auth.APIEndpoint + v2 + apiPath
+
+	req, err := http.NewRequest(method, path, body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	req.Header.Add("Authorization", c.auth.AuthorizationToken)
+
+	if c.Debug {
+		log.Printf("authRequest: %s %s\n", method, req.URL)
+	}
+
+	return req, c.auth, nil
+}
+
 // Dispatch an authorized API GET request
 func (c *B2) authGet(apiPath string) (*http.Response, *authorizationState, error) {
 	req, auth, err := c.authRequest("GET", apiPath, nil)
@@ -216,6 +247,17 @@ func (c *B2) authGet(apiPath string) (*http.Response, *authorizationState, error
 // Dispatch an authorized POST request
 func (c *B2) authPost(apiPath string, body io.Reader) (*http.Response, *authorizationState, error) {
 	req, auth, err := c.authRequest("POST", apiPath, body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	return resp, auth, err
+}
+
+// Dispatch an authorized POST request
+func (c *B2) authPostV2(apiPath string, body io.Reader) (*http.Response, *authorizationState, error) {
+	req, auth, err := c.authRequestV2("POST", apiPath, body)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -303,8 +345,48 @@ func (c *B2) apiRequest(apiPath string, request interface{}, response interface{
 	return err
 }
 
+// Perform a B2 API request with the provided request and response objects
+func (c *B2) apiRequestV2(apiPath string, request interface{}, response interface{}) error {
+	body, err := ffjson.Marshal(request)
+	if err != nil {
+		return err
+	}
+	defer ffjson.Pool(body)
+
+	if c.Debug {
+		log.Println("----")
+		log.Printf("apiRequest: %s %s", apiPath, body)
+	}
+
+	err = c.tryAPIRequestV2(apiPath, body, response)
+
+	// Retry after non-fatal errors
+	if b2err, ok := err.(*B2Error); ok {
+		if !b2err.IsFatal() && !c.NoRetry {
+			if c.Debug {
+				log.Printf("Retrying request %q due to error: %v", apiPath, err)
+			}
+
+			return c.tryAPIRequestV2(apiPath, body, response)
+		}
+	}
+	return err
+}
+
 func (c *B2) tryAPIRequest(apiPath string, body []byte, response interface{}) error {
 	resp, auth, err := c.authPost(apiPath, bytes.NewReader(body))
+	if err != nil {
+		if c.Debug {
+			log.Println("B2.post returned an error: ", err)
+		}
+		return err
+	}
+
+	return c.parseResponse(resp, response, auth)
+}
+
+func (c *B2) tryAPIRequestV2(apiPath string, body []byte, response interface{}) error {
+	resp, auth, err := c.authPostV2(apiPath, bytes.NewReader(body))
 	if err != nil {
 		if c.Debug {
 			log.Println("B2.post returned an error: ", err)
