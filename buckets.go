@@ -265,7 +265,7 @@ func (b *Bucket) GetPartUploadURL(fileId string) (*UploadAuth, string, error) {
 	}
 }
 
-// GetUploadAuth retrieves the URL to use for uploading files.
+// StartLargeFiles uploading files.
 //
 // When you upload a file to B2, you must call b2_get_upload_url first to get
 // the URL for uploading directly to the place where the file will be stored.
@@ -290,7 +290,32 @@ func (b *Bucket) StartLargeFile(filename, contentType string) (*StartLargeFile, 
 	}
 
 	return startLargeFile, nil
+}
 
+// FinishLargeFile retrieves the URL to use for uploading files.
+//
+// When you upload a file to B2, you must call b2_get_upload_url first to get
+// the URL for uploading directly to the place where the file will be stored.
+//
+// If the upload is successful, ReturnUploadAuth(*uploadAuth) should be called
+// to place it back in the pool for reuse.
+func (b *Bucket) FinishLargeFile(fileId string, hashes []string) (*StartLargeFile, error) {
+
+	request := &finishLargeFileRequest{
+		FileID: fileId,
+		Hashes: hashes,
+	}
+
+	response := &getStartLargeFileResponse{}
+	if err := b.b2.apiRequestV2("b2_finish_large_file", request, response); err != nil {
+		return nil, err
+	}
+
+	startLargeFile := &StartLargeFile{
+		FileId: response.FileId,
+	}
+
+	return startLargeFile, nil
 }
 
 // ReturnUploadAuth returns an upload URL to the available pool.

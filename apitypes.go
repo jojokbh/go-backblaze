@@ -105,6 +105,11 @@ type startLargeFileRequest struct {
 	FileInfo    map[string]string `json:"fileInfo"`
 }
 
+type finishLargeFileRequest struct {
+	FileID string   `json:"fileId"`
+	Hashes []string `json:"partSha1Array"`
+}
+
 type createBucketRequest struct {
 	AccountID      string            `json:"accountId"`
 	BucketName     string            `json:"bucketName"`
