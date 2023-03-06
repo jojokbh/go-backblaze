@@ -299,7 +299,7 @@ func (b *Bucket) StartLargeFile(filename, contentType string) (*StartLargeFile, 
 //
 // If the upload is successful, ReturnUploadAuth(*uploadAuth) should be called
 // to place it back in the pool for reuse.
-func (b *Bucket) FinishLargeFile(fileId string, hashes []string) (*StartLargeFile, error) {
+func (b *B2) FinishLargeFile(fileId string, hashes []string) (*StartLargeFile, error) {
 
 	request := &finishLargeFileRequest{
 		FileID: fileId,
@@ -307,7 +307,7 @@ func (b *Bucket) FinishLargeFile(fileId string, hashes []string) (*StartLargeFil
 	}
 
 	response := &getStartLargeFileResponse{}
-	if err := b.b2.apiRequestV2("b2_finish_large_file", request, response); err != nil {
+	if err := b.apiRequestV2("b2_finish_large_file", request, response); err != nil {
 		return nil, err
 	}
 
