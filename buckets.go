@@ -25,9 +25,7 @@ type UploadAuth struct {
 // StartLargeFile encapsulates the details needed to upload a file to B2
 // These are pooled and must be returned when complete.
 type StartLargeFile struct {
-	AuthorizationToken string
-	UploadURL          *url.URL
-	Valid              bool
+	FileId string
 }
 
 // CreateBucket creates a new B2 Bucket in the authorized account.
@@ -235,7 +233,7 @@ func (b *Bucket) GetUploadAuth() (*UploadAuth, error) {
 //
 // If the upload is successful, ReturnUploadAuth(*uploadAuth) should be called
 // to place it back in the pool for reuse.
-func (b *Bucket) GetPartUploadURL(filename, contentType string) (*UploadAuth, string, error) {
+func (b *Bucket) GetPartUploadURL(fileId string) (*UploadAuth, string, error) {
 	select {
 	// Pop an UploadAuth from the pool
 	case auth := <-b.uploadAuthPool:
@@ -243,20 +241,8 @@ func (b *Bucket) GetPartUploadURL(filename, contentType string) (*UploadAuth, st
 
 	// If none are available, make a new one
 	default:
-		// Make a new one
-		firstrequest := &startLargeFileRequest{
-			ID:          b.ID,
-			Filename:    filename,
-			ContentType: contentType,
-		}
-
-		firstresponse := &getStartLargeFileResponse{}
-		if err := b.b2.apiRequestV2("b2_start_large_file", firstrequest, firstresponse); err != nil {
-			return nil, "", err
-		}
-
 		request := &getStartLargeFileRequest{
-			FileId: firstresponse.FileId,
+			FileId: fileId,
 		}
 
 		response := &getPartUploadURLResponse{}
@@ -277,6 +263,34 @@ func (b *Bucket) GetPartUploadURL(filename, contentType string) (*UploadAuth, st
 
 		return auth, response.FileID, nil
 	}
+}
+
+// GetUploadAuth retrieves the URL to use for uploading files.
+//
+// When you upload a file to B2, you must call b2_get_upload_url first to get
+// the URL for uploading directly to the place where the file will be stored.
+//
+// If the upload is successful, ReturnUploadAuth(*uploadAuth) should be called
+// to place it back in the pool for reuse.
+func (b *Bucket) StartLargeFile(filename, contentType string) (*StartLargeFile, error) {
+
+	request := &startLargeFileRequest{
+		ID:          b.ID,
+		Filename:    filename,
+		ContentType: contentType,
+	}
+
+	response := &getStartLargeFileResponse{}
+	if err := b.b2.apiRequestV2("b2_start_large_file", request, response); err != nil {
+		return nil, err
+	}
+
+	startLargeFile := &StartLargeFile{
+		FileId: response.FileId,
+	}
+
+	return startLargeFile, nil
+
 }
 
 // ReturnUploadAuth returns an upload URL to the available pool.
