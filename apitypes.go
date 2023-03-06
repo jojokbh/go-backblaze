@@ -106,8 +106,8 @@ type startLargeFileRequest struct {
 }
 
 type finishLargeFileRequest struct {
-	FileID string   `json:"fileId"`
-	Hashes []string `json:"partSha1Array"`
+	FileID        string   `json:"fileId"`
+	PartSha1Array []string `json:"partSha1Array"`
 }
 
 type createBucketRequest struct {

@@ -302,8 +302,8 @@ func (b *Bucket) StartLargeFile(filename, contentType string) (*StartLargeFile, 
 func (b *B2) FinishLargeFile(fileId string, hashes []string) (*StartLargeFile, error) {
 
 	request := &finishLargeFileRequest{
-		FileID: fileId,
-		Hashes: hashes,
+		FileID:        fileId,
+		PartSha1Array: hashes,
 	}
 
 	response := &getStartLargeFileResponse{}
